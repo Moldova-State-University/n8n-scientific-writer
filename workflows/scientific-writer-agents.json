@@ -1,0 +1,1169 @@
+{
+  "name": "Scientific Writer · Agents",
+  "description": "Pipeline over the SW n8n Agents (library skills, qwen3.8:27b): plan, sources, cards, writing, checking, editing; review gate 70% with no critical issues, up to 2 revision rounds; English or Romanian.",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "n8nUserAuth",
+        "formTitle": "Scientific Writer",
+        "formDescription": "A team of n8n agents finds open-access papers, reads them, writes the article, checks every citation and reviews the text. A text passes at 70% with no critical issues; otherwise it goes back for revision. You approve the plan and the sources; the result comes by email.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Topic or research question",
+              "fieldType": "textarea",
+              "fieldName": "topic",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Article type",
+              "fieldType": "dropdown",
+              "fieldName": "article_type",
+              "defaultValue": "Literature review",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Literature review"
+                  },
+                  {
+                    "option": "Related work section"
+                  },
+                  {
+                    "option": "IMRAD article draft"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Language of the article",
+              "fieldType": "dropdown",
+              "fieldName": "language",
+              "defaultValue": "English",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "English"
+                  },
+                  {
+                    "option": "Romanian"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Papers from year",
+              "fieldType": "number",
+              "fieldName": "year_from",
+              "defaultValue": "2018"
+            },
+            {
+              "fieldLabel": "Papers up to year",
+              "fieldType": "number",
+              "fieldName": "year_to",
+              "defaultValue": "2026"
+            },
+            {
+              "fieldLabel": "Number of sources",
+              "fieldType": "number",
+              "fieldName": "max_sources",
+              "defaultValue": "15"
+            },
+            {
+              "fieldLabel": "Send the result to",
+              "fieldType": "email",
+              "fieldName": "email",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Start",
+          "path": "scientific-writer-agents"
+        }
+      },
+      "id": "d63aaaab-6f6c-45c3-a664-63893927400f",
+      "name": "New Article Request",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        240
+      ],
+      "webhookId": "2e99ee3b-8de7-4429-9910-6e12c7e5497c"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "topic",
+              "name": "topic",
+              "value": "={{ $json.topic ?? $json[\"Topic or research question\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "article_type",
+              "name": "article_type",
+              "value": "={{ $json.article_type ?? $json[\"Article type\"] ?? \"Literature review\" }}",
+              "type": "string"
+            },
+            {
+              "id": "language",
+              "name": "language",
+              "value": "={{ [\"English\", \"Romanian\"].includes($json.language ?? $json[\"Language of the article\"]) ? ($json.language ?? $json[\"Language of the article\"]) : \"English\" }}",
+              "type": "string"
+            },
+            {
+              "id": "year_from",
+              "name": "year_from",
+              "value": "={{ Number($json.year_from ?? $json[\"Papers from year\"]) || 2018 }}",
+              "type": "number"
+            },
+            {
+              "id": "year_to",
+              "name": "year_to",
+              "value": "={{ Number($json.year_to ?? $json[\"Papers up to year\"]) || $now.year }}",
+              "type": "number"
+            },
+            {
+              "id": "max_sources",
+              "name": "max_sources",
+              "value": "={{ Number($json.max_sources ?? $json[\"Number of sources\"]) || 15 }}",
+              "type": "number"
+            },
+            {
+              "id": "email",
+              "name": "email",
+              "value": "={{ $json.email ?? $json[\"Send the result to\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "337ade37-3111-4d09-8664-d0c09296fbf1",
+      "name": "Task",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "agentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_PLANNER_AGENT_ID",
+          "cachedResultName": "SW · Planner"
+        },
+        "message": "=Topic or research question: {{ $json.topic }}\nArticle type: {{ $json.article_type }}\nTarget language: {{ $json.language }}\nYears: {{ $json.year_from }}-{{ $json.year_to }}\nNumber of sources: {{ $json.max_sources }}\n\nWrite the section titles of the outline in the target language. Search queries stay in English.",
+        "useStructuredOutput": true,
+        "jsonSchemaExample": "{ \"question\": \"Can small language models with retrieval match large language models with retrieval on knowledge-intensive tasks?\", \"derived\": true, \"components\": { \"population\": \"knowledge-intensive NLP tasks\", \"intervention\": \"SLM + RAG\", \"comparison\": \"LLM + RAG\", \"outcome\": \"accuracy, faithfulness, cost, latency\" }, \"criteria\": { \"include\": [\"empirical comparison\"], \"exclude\": [\"no retrieval\"] }, \"subquestions\": [\"Which tasks close the gap?\"], \"queries\": [\"small language model retrieval augmented generation\"], \"outline\": [ { \"id\": \"s1\", \"title\": \"Introduction\", \"purpose\": \"motivate the question\", \"words\": 400 } ], \"language\": \"English\", \"article_type\": \"Literature review\", \"max_sources\": 15 }",
+        "advanced": {
+          "enableStreaming": false
+        }
+      },
+      "id": "1c72e870-c816-449d-a17b-6db416f7826a",
+      "name": "Planner",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3.1,
+      "position": [
+        496,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "radio",
+              "fieldName": "decision",
+              "defaultValue": "Continue",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Continue"
+                  },
+                  {
+                    "option": "Stop"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Extra search queries, one per line (optional)",
+              "fieldType": "textarea",
+              "fieldName": "extra_queries"
+            }
+          ]
+        },
+        "options": {
+          "formTitle": "Step 1 of 2: research plan",
+          "formDescription": "=<p><b>Question:</b> {{ $json.structuredOutput.question }}</p><p><b>Search queries:</b></p><ul>{{ ($json.structuredOutput.queries || []).map(q => \"<li>\" + q + \"</li>\").join(\"\") }}</ul><p><b>Outline:</b></p><ol>{{ ($json.structuredOutput.outline || []).map(s => \"<li>\" + s.title + \" (\" + s.words + \" words)</li>\").join(\"\") }}</ol>",
+          "buttonLabel": "Search papers"
+        }
+      },
+      "id": "7d1248f0-08c2-43b4-a40a-0a6b38e610c9",
+      "name": "Approve Plan",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        944,
+        384
+      ],
+      "webhookId": "29072b0d-3814-4cf0-8a43-9e879e93b2a3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.decision ?? $json.Decision }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "Continue"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5d8c17ae-1368-4cbd-9788-149b02d6e4e4",
+      "name": "Plan Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "agentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_SCOUT_AGENT_ID",
+          "cachedResultName": "SW · Scout"
+        },
+        "message": "=Research question: {{ $(\"Planner\").first().json.structuredOutput.question }}\nComponents: {{ JSON.stringify($(\"Planner\").first().json.structuredOutput.components) }}\nCriteria: {{ JSON.stringify($(\"Planner\").first().json.structuredOutput.criteria) }}\nYears: {{ $(\"Task\").first().json.year_from }}-{{ $(\"Task\").first().json.year_to }} (pass them as fromYear and toYear)\nMaximum number of papers: {{ $(\"Task\").first().json.max_sources }}\n\nSearch queries:\n{{ [...($(\"Planner\").first().json.structuredOutput.queries || []), ...String($json.extra_queries || \"\").split(\"\\n\").map(q => q.trim()).filter(Boolean)].map(q => \"- \" + q).join(\"\\n\") }}",
+        "useStructuredOutput": true,
+        "jsonSchemaExample": "{ \"corpus\": [ { \"title\": \"MiniRAG: A Lightweight RAG system with Small Language Models\", \"authors\": [\"Tianyu Fan\"], \"year\": 2026, \"venue\": \"arXiv\", \"doi\": \"10.48550/arxiv.2501.06713\", \"openalex_id\": \"https://openalex.org/W1\", \"pdf_url\": \"https://arxiv.org/pdf/2501.06713\", \"landing_url\": \"https://arxiv.org/abs/2501.06713\", \"cited_by\": 40, \"is_retracted\": false, \"relevance\": \"direct\", \"reason\": \"compares SLM-based RAG with LLM-based RAG\", \"abstract\": \"...\" } ] }",
+        "advanced": {
+          "enableStreaming": false
+        }
+      },
+      "id": "08c4a07b-cc6d-42f0-a89a-cbb7889b5fbb",
+      "name": "Scout",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3.1,
+      "position": [
+        1504,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Stopped",
+        "completionMessage": "Nothing was written. Submit the form again with a changed topic.",
+        "options": {}
+      },
+      "id": "1cb94211-0e72-4089-a06b-7142d90f4d1b",
+      "name": "Stopped",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        2400,
+        496
+      ],
+      "webhookId": "185209c9-ea1d-4413-ab42-cc2dfd141182"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Drops duplicates and gives each work a stable citation key.\nconst raw = $input.first().json.structuredOutput?.corpus ?? [];\nconst seen = new Set();\nconst used = {};\nconst corpus = [];\nfor (const p of raw) {\n  const id = String(p.doi || p.title || '').toLowerCase();\n  if (!id || seen.has(id)) continue;\n  seen.add(id);\n  const surname = String(p.authors?.[0] ?? 'Anon').split(' ').pop().normalize('NFKD').replace(/[^A-Za-z]/g, '') || 'Anon';\n  const base = surname + (p.year ?? '');\n  used[base] = (used[base] ?? 0) + 1;\n  corpus.push({ ...p, key: used[base] > 1 ? base + String.fromCharCode(95 + used[base]) : base });\n}\nreturn [{ json: { corpus: corpus.slice(0, $('Task').first().json.max_sources) } }];"
+      },
+      "id": "6c250c19-800b-4693-aac3-fbcfa6e72b32",
+      "name": "Corpus",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1952,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "radio",
+              "fieldName": "decision",
+              "defaultValue": "Continue",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Continue"
+                  },
+                  {
+                    "option": "Stop"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Numbers of papers to drop (optional), e.g. 3, 7",
+              "fieldName": "exclude"
+            }
+          ]
+        },
+        "options": {
+          "formTitle": "Step 2 of 2: sources",
+          "formDescription": "=<p>Writing, checking and review take 30-90 minutes after this step. You can close the page: the result comes by email.</p><table><tr><th>#</th><th>Paper</th><th>Year</th><th>Relevance</th><th>Text</th></tr>{{ ($json.corpus || []).map((p, i) => \"<tr><td>\" + (i + 1) + \"</td><td>\" + p.title + \"</td><td>\" + (p.year ?? \"\") + \"</td><td>\" + (p.relevance ?? \"\") + \"</td><td>\" + (p.pdf_url ? \"PDF\" : \"abstract\") + \"</td></tr>\").join(\"\") }}</table>",
+          "buttonLabel": "Write the article"
+        }
+      },
+      "id": "a97fe11e-957a-4e45-89bd-1d4b92895b22",
+      "name": "Approve Sources",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        2176,
+        80
+      ],
+      "webhookId": "45e0cd3c-72b5-405b-8cdc-e5572d206116"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.decision ?? $json.Decision }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "Continue"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b3e6a7ea-2480-4c39-aad7-ff964936c8b4",
+      "name": "Sources Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2000,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const corpus = $('Corpus').first().json.corpus;\nconst answer = $input.first().json;\nconst drop = new Set(String(answer.exclude ?? '').split(/[^0-9]+/).filter(Boolean).map(Number));\nreturn corpus.filter((_, i) => !drop.has(i + 1)).map((paper) => ({ json: paper }));"
+      },
+      "id": "dcb3695a-fe17-44f0-94fd-7ea2d59856dc",
+      "name": "Papers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "agentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_ANALYST_AGENT_ID",
+          "cachedResultName": "SW · Analyst"
+        },
+        "message": "=Research question: {{ $(\"Planner\").first().json.structuredOutput.question }}\nComponents: {{ JSON.stringify($(\"Planner\").first().json.structuredOutput.components) }}\n\nAnalyze this ONE paper and write its card (heading ### [{{ $json.key }}]):\n{{ JSON.stringify($json, null, 1) }}",
+        "advanced": {
+          "enableStreaming": false,
+          "invokeMode": "perItem"
+        }
+      },
+      "id": "68a21e0f-5cb6-493c-8141-ba3dcf9284f1",
+      "name": "Analyst",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3.1,
+      "position": [
+        2544,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const list = $('Papers').all().map((i) => i.json);\nconst texts = $input.all().map((i) => String(i.json.text ?? ''));\nconst cards = texts.join('\\n\\n');\nconst corpusMeta = list.map(({ abstract, ...meta }) => meta);\nconst abstractOnly = texts.filter((t) => /abstract only|Material analyzed:\\s*\\**\\s*abstract/i.test(t)).length;\nreturn [{ json: { cards, corpusMeta, total: list.length, fullText: list.length - abstractOnly } }];"
+      },
+      "id": "4b593771-581e-4943-995f-9a54329d1273",
+      "name": "Collect Cards",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2992,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "agentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_SYNTHESIZER_AGENT_ID",
+          "cachedResultName": "SW · Synthesizer"
+        },
+        "message": "=Research question: {{ $(\"Planner\").first().json.structuredOutput.question }}\n\nArticle outline:\n{{ JSON.stringify($(\"Planner\").first().json.structuredOutput.outline, null, 1) }}\n\nPaper cards ({{ $json.fullText }} of {{ $json.total }} from full text):\n{{ $json.cards }}",
+        "advanced": {
+          "enableStreaming": false
+        }
+      },
+      "id": "94bec486-348d-44b6-896f-7e21ce82dc2c",
+      "name": "Synthesizer",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3.1,
+      "position": [
+        2976,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "agentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_WRITER_AGENT_ID",
+          "cachedResultName": "SW · Writer"
+        },
+        "message": "=Article type: {{ $(\"Task\").first().json.article_type }}\nTarget language: {{ $(\"Task\").first().json.language }}\n\nPlan:\n{{ JSON.stringify($(\"Planner\").first().json.structuredOutput, null, 1) }}\n\nSynthesis and writer brief:\n{{ $json.text }}\n\nPaper cards:\n{{ $(\"Collect Cards\").first().json.cards }}",
+        "advanced": {
+          "enableStreaming": false
+        }
+      },
+      "id": "3ae234df-6952-42a9-a7f4-ac8c6fdf8ab4",
+      "name": "Writer",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3.1,
+      "position": [
+        3424,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "agentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_CHECKER_AGENT_ID",
+          "cachedResultName": "SW · Checker"
+        },
+        "message": "=Draft:\n{{ $json.text }}\n\nPaper cards:\n{{ $(\"Collect Cards\").first().json.cards }}\n\nCorpus metadata:\n{{ JSON.stringify($(\"Collect Cards\").first().json.corpusMeta, null, 1) }}",
+        "advanced": {
+          "enableStreaming": false
+        }
+      },
+      "id": "2ea64530-8847-49a5-bbc4-baa1278a7b72",
+      "name": "Checker",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3.1,
+      "position": [
+        3872,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "agentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_EDITOR_AGENT_ID",
+          "cachedResultName": "SW · Editor"
+        },
+        "message": "=Target language: {{ $(\"Task\").first().json.language }}\nArticle type: {{ $(\"Task\").first().json.article_type }}\n\nDraft:\n{{ $(\"Writer\").first().json.text }}\n\nChecker report with verified_refs:\n{{ $json.text }}\n\nCorpus metadata:\n{{ JSON.stringify($(\"Collect Cards\").first().json.corpusMeta, null, 1) }}",
+        "advanced": {
+          "enableStreaming": false
+        }
+      },
+      "id": "21fbd462-5f37-4381-aa10-2fc89a091f3f",
+      "name": "Editor",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3.1,
+      "position": [
+        4320,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "round",
+              "name": "round",
+              "value": "={{ $runIndex + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "94ee0cca-cfde-459c-8783-59554452acaa",
+      "name": "Current Text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4080,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "agentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_REVIEWER_AGENT_ID",
+          "cachedResultName": "SW · Reviewer"
+        },
+        "message": "=Review round {{ $json.round }}. Full review with weight profile 3.\n\nManuscript:\n{{ $json.text }}\n\nSources the team had:\n{{ $(\"Collect Cards\").first().json.corpusMeta.map(p => \"- \" + p.key + \": \" + p.title + \" (\" + p.year + \")\").join(\"\\n\") }}\n\nReturn the JSON object:\n- score_percent: the weighted score in percent (number);\n- recommendation: Accept, Minor Revision, Major Revision or Reject;\n- critical_issues: problems that must be fixed before the text can pass: any critical criterion (2, 7, 9, 12, 23) scored 0-1, any claim not supported by the cited sources, any citation of a work that is not in the source list, wrong numbers, a missing or inconsistent reference list. Criteria 22-24 marked Unable to assess are not critical issues. Empty list if there are none;\n- top_fixes: up to 5 concrete instructions for the Editor;\n- review_markdown: the full review following your output contract.",
+        "useStructuredOutput": true,
+        "jsonSchemaExample": "{ \"score_percent\": 74, \"recommendation\": \"Major Revision\", \"critical_issues\": [\"Section 4 cites [3] for a 12% accuracy gain, but the card reports 8%\"], \"top_fixes\": [\"Correct the number in section 4 to 8% as in [3]\"], \"review_markdown\": \"## Review Metadata ...\" }",
+        "advanced": {
+          "enableStreaming": false
+        }
+      },
+      "id": "f6687a1e-523a-483f-bf71-dbc42614b3b5",
+      "name": "Reviewer",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3.1,
+      "position": [
+        4368,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text",
+              "name": "text",
+              "value": "={{ $(\"Current Text\").item.json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "round",
+              "name": "round",
+              "value": "={{ $(\"Current Text\").item.json.round }}",
+              "type": "number"
+            },
+            {
+              "id": "score",
+              "name": "score",
+              "value": "={{ Number($json.structuredOutput?.score_percent) || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "recommendation",
+              "name": "recommendation",
+              "value": "={{ $json.structuredOutput?.recommendation ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "critical",
+              "name": "critical",
+              "value": "={{ ($json.structuredOutput?.critical_issues ?? []).filter(c => c && !/^none$/i.test(String(c).trim())) }}",
+              "type": "array"
+            },
+            {
+              "id": "fixes",
+              "name": "fixes",
+              "value": "={{ $json.structuredOutput?.top_fixes ?? [] }}",
+              "type": "array"
+            },
+            {
+              "id": "review",
+              "name": "review",
+              "value": "={{ $json.structuredOutput?.review_markdown ?? $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "343bee31-fbe9-41f2-bed2-8ac0c2227151",
+      "name": "Review Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5072,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.score }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": 70
+            },
+            {
+              "leftValue": "={{ $json.critical.length }}",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5f1fc67e-d168-41d8-995a-8d951f7701e3",
+      "name": "Passed Review?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5296,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst passed = r.score >= 70 && r.critical.length === 0;\nconst bib = (String(r.text).match(/```bibtex\\s*([\\s\\S]*?)```/) ?? [])[1]?.trim() ?? '';\nconst article = String(r.text).replace(/```bibtex[\\s\\S]*?```/, '').trim();\nconst cards = $('Collect Cards').first().json;\nconst sources = cards.corpusMeta.map((p, i) => `${i + 1}. [${p.key}] ${p.title} (${p.year ?? 'n.d.'}) ${p.doi ? 'https://doi.org/' + p.doi : (p.landing_url ?? p.pdf_url ?? '')}`).join('\\n');\nconst open = r.critical.length ? '\\n\\n## Open critical issues\\n' + r.critical.map((c, i) => `${i + 1}. ${c}`).join('\\n') : '';\nconst file = (body, fileName, mimeType) => ({ data: Buffer.from(body, 'utf8').toString('base64'), fileName, mimeType });\nconst task = $('Task').first().json;\nreturn [{\n  json: { email: task.email, topic: task.topic, language: task.language, passed, score: r.score, recommendation: r.recommendation, rounds: r.round, critical: r.critical, sources: cards.total, fullText: cards.fullText },\n  binary: {\n    article: file(article, 'article.md', 'text/markdown'),\n    bib: file(bib || '% The Editor returned no BibTeX block', 'references.bib', 'application/x-bibtex'),\n    review: file(`# Review (round ${r.round}, score ${r.score}%, ${r.recommendation})${open}\\n\\n${r.review}`, 'review.md', 'text/markdown'),\n    corpus: file(sources + '\\n\\n---\\n\\n' + cards.cards, 'sources-and-cards.md', 'text/markdown'),\n  },\n}];"
+      },
+      "id": "73f3a18e-b25e-44d2-aac0-27c8f9fe77e8",
+      "name": "Build Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6336,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.round }}",
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              },
+              "rightValue": 3
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1be0fda8-a664-46e4-a670-c6ff76face83",
+      "name": "Revision Rounds Left?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5520,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "agentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_EDITOR_AGENT_ID",
+          "cachedResultName": "SW · Editor"
+        },
+        "message": "=Revision round {{ $json.round }}. The Reviewer scored the text {{ $json.score }}% ({{ $json.recommendation }}). It passes only at 70% or more with no critical issues.\nTarget language: {{ $(\"Task\").first().json.language }}\n\nCritical issues to fix (all of them):\n{{ $json.critical.map((c, i) => (i + 1) + \". \" + c).join(\"\\n\") || \"none\" }}\n\nTop fixes from the review:\n{{ $json.fixes.map((c, i) => (i + 1) + \". \" + c).join(\"\\n\") || \"none\" }}\n\nPaper cards (the only allowed evidence):\n{{ $(\"Collect Cards\").first().json.cards }}\n\nManuscript to revise:\n{{ $json.text }}\n\nReturn the complete revised manuscript in the same format: text with [n] citations, the ISO 690:2022 reference list, one bibtex code block, and a short validation report that says how each critical issue was fixed. Use crossref_lookup when a reference needs checking. Do not add sources outside the cards.",
+        "advanced": {
+          "enableStreaming": false
+        }
+      },
+      "id": "2b226ccc-599d-4bb1-a4e7-eb8324055fec",
+      "name": "Revise Text",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3.1,
+      "position": [
+        6336,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "Scientific Writer <noreply@example.org>",
+        "toEmail": "={{ $json.email }}",
+        "subject": "=Scientific Writer: {{ $json.passed ? \"passed\" : \"needs work\" }} ({{ $json.score }}%) - {{ $json.topic.slice(0, 70) }}",
+        "html": "=<div style=\"font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#14171f;max-width:600px\"><h2 style=\"margin:0 0 12px\">{{ $json.passed ? \"The article passed review\" : \"The article did not pass review yet\" }}</h2><table style=\"border-collapse:collapse\"><tr><td style=\"padding:4px 12px 4px 0;color:#555\">Topic</td><td>{{ $json.topic }}</td></tr><tr><td style=\"padding:4px 12px 4px 0;color:#555\">Language</td><td>{{ $json.language }}</td></tr><tr><td style=\"padding:4px 12px 4px 0;color:#555\">Review score</td><td><b>{{ $json.score }}%</b> (pass mark 70%), {{ $json.recommendation }}</td></tr><tr><td style=\"padding:4px 12px 4px 0;color:#555\">Review rounds</td><td>{{ $json.rounds }}</td></tr><tr><td style=\"padding:4px 12px 4px 0;color:#555\">Sources</td><td>{{ $json.sources }} (about {{ $json.fullText }} read in full text)</td></tr></table>{{ $json.critical.length ? \"<p><b>Open critical issues:</b></p><ol>\" + $json.critical.map(c => \"<li>\" + c + \"</li>\").join(\"\") + \"</ol>\" : \"\" }}<p>Attached: article.md, references.bib, review.md, sources-and-cards.md.</p><p style=\"color:#555\">The text is a machine draft. Check it before you use it.</p></div>",
+        "options": {
+          "appendAttribution": false,
+          "fileAttachments": "article,bib,review,corpus"
+        }
+      },
+      "id": "a9acf709-9363-467a-aa35-ba34fd9e86f7",
+      "name": "Email Result",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        6560,
+        144
+      ],
+      "webhookId": "fcdc8437-238d-4341-b6f9-d0d730c42136",
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_WITH_SMTP_CREDENTIAL_ID",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "The article is ready",
+        "completionMessage": "=We sent the text, BibTeX and the review to {{ $(\"Task\").first().json.email }}.",
+        "options": {}
+      },
+      "id": "b537c465-a705-4979-bbdd-1c5d8bfaab45",
+      "name": "Done",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        6784,
+        144
+      ],
+      "webhookId": "1fe4ec8b-f2c3-4d24-9eb8-144ec65378b2"
+    },
+    {
+      "parameters": {
+        "content": "## Scientific Writer (n8n agents)\nEvery step is an n8n Agent (SW · ...) with its skill from mcroitor/agent-skills-library and qwen3.8:27b.\nTools: Scout -> search_openalex, Analyst -> fetch_fulltext, Checker and Editor -> crossref_lookup.\nArticle language: English (default) or Romanian.",
+        "height": 448,
+        "width": 416,
+        "color": 4
+      },
+      "id": "b0a68380-1d31-4136-8a4b-994be433b673",
+      "name": "Sticky Note fffcf56c",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Review gate\nPasses at **70%** or more with **no critical issues**.\nOtherwise the Editor revises the text with the Reviewer critical issues and top fixes, and the Reviewer checks it again. At most 2 revision rounds; after that the email lists what is still open.",
+        "height": 608,
+        "width": 3168,
+        "color": 3
+      },
+      "id": "cfc0f5e7-53fa-4951-9e7a-7726e3ec06fa",
+      "name": "Sticky Note 070a9727",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3648,
+        -80
+      ]
+    }
+  ],
+  "connections": {
+    "New Article Request": {
+      "main": [
+        [
+          {
+            "node": "Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task": {
+      "main": [
+        [
+          {
+            "node": "Planner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planner": {
+      "main": [
+        [
+          {
+            "node": "Approve Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve Plan": {
+      "main": [
+        [
+          {
+            "node": "Plan Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Approved?": {
+      "main": [
+        [
+          {
+            "node": "Scout",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stopped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scout": {
+      "main": [
+        [
+          {
+            "node": "Corpus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Corpus": {
+      "main": [
+        [
+          {
+            "node": "Approve Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve Sources": {
+      "main": [
+        [
+          {
+            "node": "Sources Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sources Approved?": {
+      "main": [
+        [
+          {
+            "node": "Papers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stopped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Papers": {
+      "main": [
+        [
+          {
+            "node": "Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyst": {
+      "main": [
+        [
+          {
+            "node": "Collect Cards",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Cards": {
+      "main": [
+        [
+          {
+            "node": "Synthesizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Synthesizer": {
+      "main": [
+        [
+          {
+            "node": "Writer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Writer": {
+      "main": [
+        [
+          {
+            "node": "Checker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checker": {
+      "main": [
+        [
+          {
+            "node": "Editor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Editor": {
+      "main": [
+        [
+          {
+            "node": "Current Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Current Text": {
+      "main": [
+        [
+          {
+            "node": "Reviewer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reviewer": {
+      "main": [
+        [
+          {
+            "node": "Review Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review Result": {
+      "main": [
+        [
+          {
+            "node": "Passed Review?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Passed Review?": {
+      "main": [
+        [
+          {
+            "node": "Build Files",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Revision Rounds Left?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Files": {
+      "main": [
+        [
+          {
+            "node": "Email Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revision Rounds Left?": {
+      "main": [
+        [
+          {
+            "node": "Revise Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revise Text": {
+      "main": [
+        [
+          {
+            "node": "Current Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Result": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [
+    {
+      "id": "19351804-82eb-4aa9-850e-5ed2aae9605a",
+      "name": "Research plan",
+      "nodeNames": [
+        "Planner",
+        "Approve Plan"
+      ],
+      "description": "Planner agent (problem-decomposer) drafts the question, queries and outline; you approve them"
+    },
+    {
+      "id": "05f3bf35-93d8-41ff-a763-3dd67c3a9cbc",
+      "name": "Sources",
+      "nodeNames": [
+        "Scout",
+        "Corpus",
+        "Approve Sources"
+      ],
+      "description": "Scout agent searches OpenAlex and screens papers (scientific-paper-analyst); you approve the list"
+    },
+    {
+      "id": "c9a60faa-9a95-4fb6-86f3-6c7fdbe0cddf",
+      "name": "Reading",
+      "nodeNames": [
+        "Papers",
+        "Analyst",
+        "Collect Cards"
+      ],
+      "description": "Analyst agent downloads each PDF and writes a paper card (scientific-paper-analyst)"
+    },
+    {
+      "id": "a12e06d2-6780-4050-9ad7-dcf47308b4a2",
+      "name": "Writing",
+      "nodeNames": [
+        "Synthesizer",
+        "Writer",
+        "Checker",
+        "Editor"
+      ],
+      "description": "Synthesizer, Writer, Checker (Crossref) and Editor (ISO 690, BibTeX) agents"
+    },
+    {
+      "id": "c9cfcf54-4088-45fa-894b-584be6904932",
+      "name": "Delivery",
+      "nodeNames": [
+        "Build Files",
+        "Email Result",
+        "Done"
+      ],
+      "description": "Builds article.md, references.bib, review.md, sources-and-cards.md and emails them"
+    }
+  ],
+  "pinData": {}
+}

@@ -1,0 +1,118 @@
+{
+  "name": "SW · Search OpenAlex",
+  "description": "Tool for Scientific Writer agents: OpenAlex search with compact records and abstracts.",
+  "nodes": [
+    {
+      "id": "76bb56b8-ccb3-4636-bd5e-65616c3df236",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "query",
+              "type": "string"
+            },
+            {
+              "name": "fromYear",
+              "type": "number"
+            },
+            {
+              "name": "toYear",
+              "type": "number"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "0eb1519d-e489-4055-b397-4dc425c1658f",
+      "name": "Search OpenAlex",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.openalex.org/works",
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "filter",
+              "value": "=from_publication_date:{{ $json.fromYear || 2018 }}-01-01,to_publication_date:{{ $json.toYear || $now.year }}-12-31,is_oa:true"
+            },
+            {
+              "name": "per-page",
+              "value": "12"
+            },
+            {
+              "name": "select",
+              "value": "id,doi,title,publication_year,type,authorships,primary_location,best_oa_location,open_access,cited_by_count,biblio,is_retracted,abstract_inverted_index"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "ac04d993-8367-4e09-baf8-31ead7b97f0e",
+      "name": "Short Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Returns compact records so the agent context stays small.\nconst abstractOf = (index) => {\n  if (!index) return '';\n  const words = [];\n  for (const [word, positions] of Object.entries(index)) for (const p of positions) words[p] = word;\n  return words.join(' ').slice(0, 600);\n};\nconst works = ($input.first().json.results ?? []).map((w) => ({\n  openalex_id: w.id,\n  doi: w.doi ? w.doi.replace('https://doi.org/', '') : null,\n  title: w.title,\n  authors: (w.authorships ?? []).slice(0, 6).map((a) => a.author?.display_name).filter(Boolean),\n  year: w.publication_year,\n  venue: w.primary_location?.source?.display_name ?? null,\n  cited_by: w.cited_by_count ?? 0,\n  pdf_url: w.best_oa_location?.pdf_url ?? null,\n  landing_url: w.best_oa_location?.landing_page_url ?? w.primary_location?.landing_page_url ?? null,\n  is_retracted: Boolean(w.is_retracted),\n  abstract: abstractOf(w.abstract_inverted_index),\n}));\nreturn [{ json: { query: $('Start').first().json.query, count: works.length, works } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Search OpenAlex",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search OpenAlex": {
+      "main": [
+        [
+          {
+            "node": "Short Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodeGroups": [],
+  "pinData": {}
+}

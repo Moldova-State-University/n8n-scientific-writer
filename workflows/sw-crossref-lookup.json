@@ -1,0 +1,98 @@
+{
+  "name": "SW · Crossref lookup",
+  "description": "Tool for Scientific Writer agents: Crossref metadata by DOI or title, trimmed for ISO 690 and BibTeX.",
+  "nodes": [
+    {
+      "id": "701ed354-54c9-49b4-a894-e1a92f983b7d",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "doi",
+              "type": "string"
+            },
+            {
+              "name": "title",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4c114b42-6709-44d8-bcac-e762cf183ea3",
+      "name": "Look Up Crossref",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.doi ? \"https://api.crossref.org/works/\" + encodeURIComponent(String($json.doi).replace(/^https?:\\/\\/doi\\.org\\//, \"\")) : \"https://api.crossref.org/works?rows=3&query.bibliographic=\" + encodeURIComponent($json.title || \"\") }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "d1d34f2c-087b-4a4d-abd0-eb8d8a206b45",
+      "name": "Short Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Keeps only the fields needed for ISO 690 and BibTeX.\nconst pick = (m) => ({\n  doi: m.DOI ?? null, type: m.type ?? null, title: m.title?.[0] ?? null,\n  authors: (m.author ?? []).map((a) => ({ family: a.family ?? a.name ?? null, given: a.given ?? null })),\n  year: m.issued?.['date-parts']?.[0]?.[0] ?? null, container: m['container-title']?.[0] ?? null,\n  volume: m.volume ?? null, issue: m.issue ?? null, pages: m.page ?? null, publisher: m.publisher ?? null, url: m.URL ?? null,\n  retracted: (m['update-to'] ?? []).some((u) => u.type === 'retraction'),\n});\nconst msg = $input.first().json?.message;\nif (!msg || typeof msg !== 'object') return [{ json: { found: false, query: $('Start').first().json } }];\nconst works = Array.isArray(msg.items) ? msg.items.map(pick) : [pick(msg)];\nreturn [{ json: { found: works.length > 0, works } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Look Up Crossref",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Look Up Crossref": {
+      "main": [
+        [
+          {
+            "node": "Short Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodeGroups": [],
+  "pinData": {}
+}

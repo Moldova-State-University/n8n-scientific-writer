@@ -1,0 +1,210 @@
+{
+  "name": "SW · Fetch full text",
+  "description": "Tool for the Scientific Writer agents: downloads an open-access PDF and returns its text.",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "url"
+            },
+            {
+              "name": "maxChars",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "bf1fd5c2-b57d-4ce9-a349-d51218b8eea9",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Scientific Writer; n8n)"
+            },
+            {
+              "name": "Accept",
+              "value": "application/pdf,*/*"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 10
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "6bbd72c3-b719-4275-8146-b97c0b64a83d",
+      "name": "Download PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        128
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {
+          "joinPages": true,
+          "maxPages": 60
+        }
+      },
+      "id": "8f89cc45-fa9b-461d-bbf1-5250271fc4ad",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        48
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const max = $('Start').first().json.maxChars || 60000;\nconst text = String($input.first().json.text || '').replace(/[ \\t]+/g, ' ').replace(/\\n{3,}/g, '\\n\\n').trim();\nreturn [{ json: { ok: text.length > 500, url: $('Start').first().json.url, pages: $input.first().json.numpages ?? null, chars: text.length, truncated: text.length > max, text: text.slice(0, max), error: text.length > 500 ? null : 'PDF has no text layer or is too short' } }];"
+      },
+      "id": "37bb4019-764f-4cfd-8f44-fcf7619824db",
+      "name": "Clean Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## SW · Fetch full text\nTool for the Scientific Writer agents. Downloads an open-access PDF and returns its text (cut to maxChars). On failure returns ok=false, and the agent falls back to the abstract.",
+        "color": 4
+      },
+      "id": "4e957e50-2114-440d-9408-fa7d9f0f064c",
+      "name": "Sticky Note 001fcd73",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        208,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "url",
+              "name": "url",
+              "value": "={{ $('Start').first().json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "text",
+              "name": "text",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "error",
+              "name": "error",
+              "value": "={{ $json.error?.message ?? $json.error ?? \"Download or PDF parsing failed\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "69e96b4c-c2d7-4494-acb6-a17d48b5bf17",
+      "name": "Report Failure",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Download PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Clean Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "pinData": {}
+}
